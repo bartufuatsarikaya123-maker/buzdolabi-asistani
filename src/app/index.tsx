@@ -19,7 +19,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingData, setIsFetchingData] = useState(true);
 
-  const API_URL = "http://192.168.1.7:8000";
+  const API_URL = "http://192.168.1.3:8000";
 
   useEffect(() => {
     fetchFoods();
