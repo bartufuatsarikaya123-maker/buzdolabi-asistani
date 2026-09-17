@@ -231,25 +231,25 @@ export default function App() {
                 <View style={styles.macroRow}>
                   <View style={styles.macroBox}>
                     <Text style={styles.macroValue}>
-                      {recipeResult.nutrients.calories}
+                      {recipeResult?.nutrients?.calories}
                     </Text>
                     <Text style={styles.macroLabel}>kcal</Text>
                   </View>
                   <View style={styles.macroBox}>
                     <Text style={styles.macroValue}>
-                      {recipeResult.nutrients.protein}g
+                      {recipeResult?.nutrients?.protein}g
                     </Text>
                     <Text style={styles.macroLabel}>Protein</Text>
                   </View>
                   <View style={styles.macroBox}>
                     <Text style={styles.macroValue}>
-                      {recipeResult.nutrients.carbs}g
+                      {recipeResult?.nutrients?.carbs}g
                     </Text>
                     <Text style={styles.macroLabel}>Karb.</Text>
                   </View>
                   <View style={styles.macroBox}>
                     <Text style={styles.macroValue}>
-                      {recipeResult.nutrients.fat}g
+                      {recipeResult?.nutrients?.fat}g
                     </Text>
                     <Text style={styles.macroLabel}>Yağ</Text>
                   </View>
