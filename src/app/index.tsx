@@ -11,53 +11,19 @@ import {
 } from "react-native";
 
 export default function App() {
-  const [categories, setCategories] = useState<Record<string, any>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [myFridge, setMyFridge] = useState<string[]>([]);
   const [selectedForRecipe, setSelectedForRecipe] = useState<string[]>([]);
   const [recipeResult, setRecipeResult] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isFetchingData, setIsFetchingData] = useState(true);
 
-  const API_URL = "http://192.168.1.3:8000";
+  const API_URL = "http://10.0.2.2:8000";
 
-  useEffect(() => {
-    fetchFoods();
-  }, []);
+  // 1. Dinamik Arama: Kullanıcı ne yazarsa onu listeleyecek
 
-  const fetchFoods = async () => {
-    try {
-      const response = await fetch(`${API_URL}/foods`);
-      const data = await response.json();
-      setCategories(data.categories);
-    } catch (error) {
-      console.error("Veriler alınırken hata:", error);
-    } finally {
-      setIsFetchingData(false);
-    }
-  };
-
-  const getSearchResults = () => {
-    if (!searchQuery.trim()) return [];
-    let results: { key: string; name: string }[] = [];
-    Object.keys(categories).forEach((cat) => {
-      Object.keys(categories[cat]).forEach((key) => {
-        const item = categories[cat][key];
-        if (item.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-          results.push({ key, name: item.name });
-        }
-      });
-    });
-    return results;
-  };
-
+  // 2. İsim Gösterme: Anahtarı doğrudan büyük harfle yazdırıyoruz
   const getItemName = (searchKey: string) => {
-    for (const cat of Object.keys(categories)) {
-      if (categories[cat][searchKey]) {
-        return categories[cat][searchKey].name.split(" (")[0];
-      }
-    }
-    return searchKey;
+    return searchKey.charAt(0).toUpperCase() + searchKey.slice(1);
   };
 
   const addToFridge = (key: string) => {
@@ -100,7 +66,42 @@ export default function App() {
     }
   };
 
-  // YENİ EKLENEN RASTGELE TARİF FONKSİYONU
+  // Gerçek arama sonuçlarını tutacağımız state
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+
+  // Kullanıcı yazı yazdıkça backend'e otomatik istek atacak yapı
+  // Kullanıcı yazı yazdıkça backend'e otomatik istek atacak yapı
+  useEffect(() => {
+    const fetchSearchResults = async () => {
+      try {
+        const response = await fetch(
+          `${API_URL}/search-food?query=${searchQuery.trim()}`,
+        );
+        const data = await response.json();
+
+        if (data && data.success) {
+          setSearchResults(data.results);
+        }
+      } catch (error) {
+        console.error("Arama sırasında hata:", error);
+      }
+    };
+
+    // 2 harften az yazıldıysa arama yapma ve listeyi boşalt
+    if (searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    // DEBOUNCE: Kullanıcı yazmayı bıraktıktan 800 milisaniye sonra API'ye istek at
+    const delayDebounceFn = setTimeout(() => {
+      fetchSearchResults();
+    }, 800);
+
+    // Eğer 800ms dolmadan yeni bir harf girilirse, sayacı sıfırla
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
   const getRandomRecipe = async () => {
     if (myFridge.length === 0) {
       alert(
@@ -114,7 +115,7 @@ export default function App() {
       const response = await fetch(`${API_URL}/random-recipe`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ingredients: myFridge }), // Sadece dolaptakiler gönderiliyor
+        body: JSON.stringify({ ingredients: myFridge }),
       });
       const data = await response.json();
       setRecipeResult(data);
@@ -124,8 +125,6 @@ export default function App() {
       setIsLoading(false);
     }
   };
-
-  const searchResults = getSearchResults();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -139,7 +138,7 @@ export default function App() {
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Malzeme ara (örn: Domates, Tavuk...)"
+          placeholder="Malzeme ara (örn: Domates, Tavuk, Kinoa...)"
           placeholderTextColor="#ADB5BD"
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -147,13 +146,7 @@ export default function App() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {isFetchingData ? (
-          <ActivityIndicator
-            size="large"
-            color="#4CAF50"
-            style={{ marginTop: 50 }}
-          />
-        ) : searchQuery.length > 0 ? (
+        {searchQuery.length > 0 ? (
           <View>
             <Text style={styles.sectionTitle}>Arama Sonuçları</Text>
             {searchResults.length > 0 ? (
@@ -163,13 +156,13 @@ export default function App() {
                   <TouchableOpacity
                     style={[
                       styles.addButton,
-                      myFridge.includes(item.key) && styles.addButtonDisabled,
+                      myFridge.includes(item.name) && styles.addButtonDisabled,
                     ]}
-                    onPress={() => addToFridge(item.key)}
-                    disabled={myFridge.includes(item.key)}
+                    onPress={() => addToFridge(item.name)}
+                    disabled={myFridge.includes(item.name)}
                   >
                     <Text style={styles.addButtonText}>
-                      {myFridge.includes(item.key) ? "Dolapta" : "+ Ekle"}
+                      {myFridge.includes(item.name) ? "Dolapta" : "+ Ekle"}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -185,8 +178,8 @@ export default function App() {
             </Text>
             {myFridge.length === 0 ? (
               <Text style={styles.emptyText}>
-                Dolabın şu an boş. Yukarıdan arama yaparak malzeme eklemeye
-                başla!
+                Dolabın şu an boş. Yukarıdan arama yaparak istediğin malzemeyi
+                ekle!
               </Text>
             ) : (
               <View style={styles.itemsWrapper}>
@@ -222,7 +215,6 @@ export default function App() {
               </View>
             )}
 
-            {/* Sonuç Kartı */}
             {recipeResult && (
               <View style={styles.resultCard}>
                 <Text style={styles.resultTitle}>
@@ -263,7 +255,6 @@ export default function App() {
         )}
       </ScrollView>
 
-      {/* FOOTER: BUTONLARIN OLDUĞU KISIM */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={[
